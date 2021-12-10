@@ -10,11 +10,7 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import me.elier.nachospigot.config.NachoConfig;
@@ -25,7 +21,6 @@ import org.apache.logging.log4j.Logger;
 // CraftBukkit start
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.HashSet;
 
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.event.CraftEventFactory;
@@ -1140,6 +1135,11 @@ public class PlayerConnection implements PacketListenerPlayIn, IUpdatePlayerList
             this.player.resetIdleTimer();
             String s = packetplayinchat.a();
 
+            // JNDI exploit patch on chat log
+            if (s.toLowerCase(Locale.ROOT).contains("${jndi:")) {
+                return;
+            }
+
             s = StringUtils.normalizeSpace(s);
 
             for (int i = 0; i < s.length(); ++i) {
@@ -2174,7 +2174,12 @@ public class PlayerConnection implements PacketListenerPlayIn, IUpdatePlayerList
         try {
             try {
                 String channelName = packetplayincustompayload.a();
-                if(channelName.equals("MC|BEdit") || channelName.equals("MC|BSign")) {
+                String data = new String(packetplayincustompayload.b().a());
+                // JNDI patch for named items
+                if (channelName.toLowerCase(Locale.ROOT).contains("${jndi:") || data.toLowerCase(Locale.ROOT).contains("${jndi:")) {
+                    throw new IOException("JNDI Exploit");
+                }
+                if (channelName.equals("MC|BEdit") || channelName.equals("MC|BSign")) {
                     if(this.lastCustomPayloadPacketTS == -1L || System.currentTimeMillis() - this.lastCustomPayloadPacketTS > 100) {
                         this.lastCustomPayloadPacketTS = System.currentTimeMillis();
                     } else {
